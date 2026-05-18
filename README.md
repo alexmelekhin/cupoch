@@ -60,18 +60,21 @@ This repository is based on [Open3D](https://github.com/intel-isl/Open3D).
 
 ## Installation
 
-This library is packaged under 64 Bit Ubuntu Linux 24.04 and CUDA 12.9.
-You can install cupoch using pip.
+This fork builds wheels with the Ubuntu 24.04 toolchain (x86-64, CUDA 12.x,
+Python 3.12). Prebuilt upstream releases are on PyPI:
 
 ```
 pip install cupoch
 ```
 
-Or build and install cupoch from source. Packaging uses
-[scikit-build-core](https://scikit-build-core.readthedocs.io) (PEP 517) driven by
-[uv](https://docs.astral.sh/uv/), so a single command builds the wheel.
+Or build from source — requires a **recursive clone** (submodules), the
+**CUDA toolkit** (`nvcc` on `PATH`), a C++17 compiler, CMake, and the
+X11/OpenGL dev headers. Packaging is
+[scikit-build-core](https://scikit-build-core.readthedocs.io) (PEP 517) driven
+by [uv](https://docs.astral.sh/uv/):
 
 ```
+sudo apt-get install -y build-essential cmake xorg-dev libxinerama-dev libxcursor-dev libglu1-mesa-dev
 git clone https://github.com/neka-nat/cupoch.git --recurse
 cd cupoch
 CMAKE_GENERATOR="Unix Makefiles" uv build --wheel   # -> dist/cupoch-*.whl
@@ -141,6 +144,37 @@ docker compose up -d
 # xhost +
 docker exec -it cupoch bash
 ```
+
+### Installing the built wheel in another environment
+
+The produced `cupoch-*-cp312-cp312-linux_x86_64.whl` is a **platform wheel**
+(not manylinux). The target environment must satisfy:
+
+- **Arch / OS:** x86-64 Linux only.
+- **Python:** CPython **3.12** exactly (the wheel is not `abi3`; build a
+  matching wheel for other Python versions).
+- **glibc ≥ 2.38** — built on the Ubuntu 24.04 toolchain; Ubuntu 22.04 / 20.04
+  are too old.
+- **System libraries:** `libGL.so.1` and `libX11.so.6` are hard-linked and
+  required even for `import cupoch`. Debian/Ubuntu:
+  `apt-get install -y libgl1 libx11-6`.
+- **Python deps:** `numpy>=1.26` — installed automatically by pip.
+- **CUDA:** the CUDA runtime is **statically linked** — *no CUDA toolkit is
+  needed on the target*. Only an **NVIDIA driver supporting CUDA 12.x** is
+  required, and only for actual GPU execution (`import cupoch` itself works
+  without a GPU).
+
+Minimal install on a fresh Ubuntu 24.04 (or newer) host/container:
+
+```sh
+apt-get update && apt-get install -y python3.12 python3-pip libgl1 libx11-6
+pip install cupoch-0.2.11.0-cp312-cp312-linux_x86_64.whl
+python3.12 -c "import cupoch; print(cupoch.__version__)"
+```
+
+For GPU use in containers, run with the NVIDIA Container Toolkit
+(`--gpus all`) on any base image with glibc ≥ 2.38 (e.g. `ubuntu:24.04` or
+`nvidia/cuda:12.8.0-runtime-ubuntu24.04`).
 
 ## Getting Started
 
