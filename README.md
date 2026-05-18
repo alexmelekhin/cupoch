@@ -1,14 +1,11 @@
 <p align="center">
-<img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/cupoch_logo.png" width="320" />
+<img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/cupoch_logo.png" width="320" />
 </p>
 
 # Robotics with GPU computing
 
-[![Build status](https://github.com/neka-nat/cupoch/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/neka-nat/cupoch/actions/workflows/ubuntu.yml/badge.svg)
-[![Build status](https://github.com/neka-nat/cupoch/actions/workflows/windows.yml/badge.svg)](https://github.com/neka-nat/cupoch/actions/workflows/windows.yml/badge.svg)[![PyPI version](https://badge.fury.io/py/cupoch.svg)](https://badge.fury.io/py/cupoch)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cupoch)
-[![Downloads](https://static.pepy.tech/badge/cupoch)](https://pepy.tech/project/cupoch)
-[![xscode](https://img.shields.io/badge/Available%20on-xs%3Acode-blue?style=?style=plastic&logo=appveyor&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAAZQTFRF////////VXz1bAAAAAJ0Uk5T/wDltzBKAAAAlUlEQVR42uzXSwqAMAwE0Mn9L+3Ggtgkk35QwcnSJo9S+yGwM9DCooCbgn4YrJ4CIPUcQF7/XSBbx2TEz4sAZ2q1RAECBAiYBlCtvwN+KiYAlG7UDGj59MViT9hOwEqAhYCtAsUZvL6I6W8c2wcbd+LIWSCHSTeSAAECngN4xxIDSK9f4B9t377Wd7H5Nt7/Xz8eAgwAvesLRjYYPuUAAAAASUVORK5CYII=)](https://xscode.com/neka-nat/cupoch)
+[![Build status](https://github.com/alexmelekhin/cupoch/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/alexmelekhin/cupoch/actions/workflows/ubuntu.yml/badge.svg)
+[![Build status](https://github.com/alexmelekhin/cupoch/actions/workflows/windows.yml/badge.svg)](https://github.com/alexmelekhin/cupoch/actions/workflows/windows.yml/badge.svg)
 
 <a href="https://www.buymeacoffee.com/nekanat" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150" height="40" ></a>
 
@@ -75,7 +72,7 @@ by [uv](https://docs.astral.sh/uv/):
 
 ```
 sudo apt-get install -y build-essential cmake xorg-dev libxinerama-dev libxcursor-dev libglu1-mesa-dev
-git clone https://github.com/neka-nat/cupoch.git --recurse
+git clone https://github.com/alexmelekhin/cupoch.git --recurse
 cd cupoch
 CMAKE_GENERATOR="Unix Makefiles" uv build --wheel   # -> dist/cupoch-*.whl
 uv pip install dist/*.whl
@@ -92,36 +89,13 @@ Pass CMake options (e.g. your GPU's compute capability) at build time via
 SKBUILD_CMAKE_DEFINE="CMAKE_CUDA_ARCHITECTURES=86" uv build --wheel
 ```
 
+For a multi-arch list, `SKBUILD_CMAKE_DEFINE` splits on `;` — pass it via
+`CMAKE_ARGS` instead: `CMAKE_ARGS="-DCMAKE_CUDA_ARCHITECTURES=80;86;89" uv build --wheel`.
+
 For an editable / development install:
 
 ```
 uv pip install -e . --no-build-isolation
-```
-
-### Installation for Jetson Nano
-You can also install cupoch using pip on Jetson Nano.
-Please set up Jetson using [jetpack](https://developer.nvidia.com/embedded/jetpack) and install some packages with apt.
-
-```
-sudo apt-get install xorg-dev libxinerama-dev libxcursor-dev libglu1-mesa-dev
-pip3 install cupoch
-```
-
-Or you can compile it from source. Update your version of cmake if necessary.
-
-```
-wget https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4.tar.gz
-tar zxvf cmake-3.18.4.tar.gz
-cd cmake-3.18.4
-./bootstrap -- -DCMAKE_USE_OPENSSL=OFF
-make && sudo make install
-cd ..
-git clone -b jetson_nano https://github.com/neka-nat/cupoch.git --recurse
-cd cupoch/
-export PATH=/usr/local/cuda/bin:$PATH
-pip install uv
-CMAKE_GENERATOR="Unix Makefiles" SKBUILD_CMAKE_DEFINE="BUILD_GLEW=ON;BUILD_GLFW=ON;BUILD_PNG=ON;BUILD_JSONCPP=ON" uv build --wheel
-uv pip install dist/*.whl
 ```
 
 ### Use Docker
@@ -135,6 +109,28 @@ docker build --output type=local,dest=./dist .
 # choose CUDA / Python versions:
 docker build --build-arg CUDA_VERSION=12.8.0 --build-arg PYTHON_VERSION=3.11 \
              --output type=local,dest=./dist .
+```
+
+#### Targeting specific GPU architectures
+
+The wheel's device code is compiled for `CUDA_ARCHITECTURES` (default `86`).
+Pass a single value, a CMake keyword (`native`, `all-major`), or a
+`;`-separated list (quote it so the shell keeps the `;`):
+
+```sh
+docker build --build-arg CUDA_ARCHITECTURES=89 --output type=local,dest=./dist .
+docker build --build-arg CUDA_ARCHITECTURES="80;86;89;90" \
+             --output type=local,dest=./dist .          # one fat wheel
+```
+
+The wheel filename does **not** encode the CUDA arch, so building several
+archs into the same directory overwrites previous wheels. To build one wheel
+per arch into separate `dist/sm_<arch>/` directories, use the helper script:
+
+```sh
+./build_wheels.sh                 # archs 80 86 89 90 (defaults)
+./build_wheels.sh 86 89           # a subset
+CUDA_VERSION=12.9.0 PYTHON_VERSION=3.11 ./build_wheels.sh
 ```
 
 For an interactive GPU dev container (compose builds the `builder` stage):
@@ -178,7 +174,7 @@ For GPU use in containers, run with the NVIDIA Container Toolkit
 
 ## Getting Started
 
-Please see how to use cupoch in [Getting Started](https://github.com/neka-nat/cupoch/blob/master/docs/getting_started.md) first.
+Please see how to use cupoch in [Getting Started](https://github.com/alexmelekhin/cupoch/blob/main/docs/getting_started.md) first.
 
 ## Results
 The figure shows Cupoch's point cloud algorithms speedup over Open3D.
@@ -214,39 +210,39 @@ __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia python visualizatio
 ```
 
 
-![speedup](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/speedup.png)
+![speedup](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/speedup.png)
 
 ### Visual odometry with intel realsense D435
 
-![vo](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/vo_gpu.gif)
+![vo](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/vo_gpu.gif)
 
 ### Occupancy grid with intel realsense D435
 
-![og](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/og_gpu.gif)
+![og](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/og_gpu.gif)
 
 ### Kinect fusion with intel realsense L515
 
-![kf](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/kinfu.gif)
+![kf](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/kinfu.gif)
 
 ### Stereo matching
 
-![sm](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/stereo.png)
+![sm](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/stereo.png)
 
 ### Fast Global Registration
 
-![fgr](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/fgr.png)
+![fgr](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/fgr.png)
 
 ### Point cloud from laser scan
 
-![fgr](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/laserscan.gif)
+![fgr](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/laserscan.gif)
 
 ### Collision detection for 2 voxel grids
 
-![col](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/collision_voxels.gif)
+![col](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/collision_voxels.gif)
 
 ### Drone Path planning
 
-![dp](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/drone_pathplanning.gif)
+![dp](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/drone_pathplanning.gif)
 
 ### Visual odometry with ROS + D435
 
@@ -260,21 +256,21 @@ cd examples/python/ros
 python realsense_rgbd_odometry_node.py
 ```
 
-![vo](https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/ros_vo.gif)
+![vo](https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/ros_vo.gif)
 
 ## Visualization
 
 | Point Cloud | Triangle Mesh | Kinematics |
 |-------------|---------------|------------|
-| <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/pointcloud.png" width="640"> |  <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/trianglemesh.png" width="640"> | <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/kinematics.png" width="640"> |
+| <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/pointcloud.png" width="640"> |  <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/trianglemesh.png" width="640"> | <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/kinematics.png" width="640"> |
 
 | Voxel Grid | Occupancy Grid | Distance Transform |
 |------------|----------------|--------------------|
-|  <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/voxelgrid.png" width="640"> | <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/occupancygrid.png" width="640"> | <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/distancetransform.png" width="640"> |
+|  <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/voxelgrid.png" width="640"> | <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/occupancygrid.png" width="640"> | <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/distancetransform.png" width="640"> |
 
 | Graph | Image |
 |-------|-------|
-| <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/graph.png" width="640"> | <img src="https://raw.githubusercontent.com/neka-nat/cupoch/master/docs/_static/image.png" width="640"> |
+| <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/graph.png" width="640"> | <img src="https://raw.githubusercontent.com/alexmelekhin/cupoch/main/docs/_static/image.png" width="640"> |
 
 ## References
 

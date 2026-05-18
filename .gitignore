@@ -1,4 +1,5 @@
 build*
+!build_wheels.sh
 dist/
 install*
 *.nvp
