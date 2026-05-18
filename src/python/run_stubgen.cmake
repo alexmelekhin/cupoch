@@ -6,10 +6,8 @@ file(MAKE_DIRECTORY "${OUT_DIR}/cupoch")
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${MODULE_DIR}"
             pybind11-stubgen cupoch
-                --no-setup-py
-                --root-module-suffix=
-                --ignore-invalid=all
-                --output-dir=${OUT_DIR}
+                --ignore-all-errors
+                --output-dir ${OUT_DIR}
     RESULT_VARIABLE _stubgen_rc)
 if (NOT _stubgen_rc EQUAL 0)
     message(WARNING

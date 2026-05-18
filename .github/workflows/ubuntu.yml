@@ -35,6 +35,7 @@ jobs:
     - name: Build wheel
       env:
         SKBUILD_CMAKE_DEFINE: "BUILD_GLEW=ON;BUILD_GLFW=ON;BUILD_PNG=ON;BUILD_JSONCPP=ON"
+        CMAKE_GENERATOR: "Unix Makefiles"
       run: uv build --wheel
     - name: Upload wheel
       uses: actions/upload-artifact@v4

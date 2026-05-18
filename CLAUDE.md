@@ -18,7 +18,7 @@ uv pip install -e . --no-build-isolation    # editable dev install
 ```
 Pass CMake options through scikit-build-core, e.g.
 `SKBUILD_CMAKE_DEFINE="CMAKE_CUDA_ARCHITECTURES=86;USE_RMM=OFF" uv build --wheel`
-(or `--config-settings=cmake.define.X=Y`). `[tool.scikit-build] build.targets=["cupoch"]` so a wheel build skips examples/unittests.
+(or `--config-settings=cmake.define.X=Y`). **Linux wheel builds require `CMAKE_GENERATOR="Unix Makefiles"`** — scikit-build-core defaults to Ninja, but cupoch's vendored third-party ExternalProjects (e.g. `ext_turbojpeg`) declare no `BUILD_BYPRODUCTS`, so their file-path libs (`3rdparty_install/lib/libturbojpeg.a`) have "no known rule" under Ninja. The Dockerfile/CI set this; `build.targets` is left unset (default `all`) for the same reason.
 
 **C++ libs / unit tests** — raw CMake, unchanged:
 

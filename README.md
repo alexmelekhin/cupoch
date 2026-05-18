@@ -74,9 +74,13 @@ Or build and install cupoch from source. Packaging uses
 ```
 git clone https://github.com/neka-nat/cupoch.git --recurse
 cd cupoch
-uv build --wheel              # -> dist/cupoch-*.whl
+CMAKE_GENERATOR="Unix Makefiles" uv build --wheel   # -> dist/cupoch-*.whl
 uv pip install dist/*.whl
 ```
+
+> On Linux, `CMAKE_GENERATOR="Unix Makefiles"` is required: the vendored
+> third-party ExternalProjects don't declare `BUILD_BYPRODUCTS`, so they don't
+> build under scikit-build-core's default Ninja generator.
 
 Pass CMake options (e.g. your GPU's compute capability) at build time via
 `SKBUILD_CMAKE_DEFINE`:
@@ -113,7 +117,7 @@ git clone -b jetson_nano https://github.com/neka-nat/cupoch.git --recurse
 cd cupoch/
 export PATH=/usr/local/cuda/bin:$PATH
 pip install uv
-SKBUILD_CMAKE_DEFINE="BUILD_GLEW=ON;BUILD_GLFW=ON;BUILD_PNG=ON;BUILD_JSONCPP=ON" uv build --wheel
+CMAKE_GENERATOR="Unix Makefiles" SKBUILD_CMAKE_DEFINE="BUILD_GLEW=ON;BUILD_GLFW=ON;BUILD_PNG=ON;BUILD_JSONCPP=ON" uv build --wheel
 uv pip install dist/*.whl
 ```
 
