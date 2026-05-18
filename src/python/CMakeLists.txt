@@ -61,51 +61,28 @@ set_target_properties(${PACKAGE_NAME} PROPERTIES
                       LIBRARY_OUTPUT_DIRECTORY "${PYTHON_COMPILED_MODULE_DIR}"
                       ARCHIVE_OUTPUT_DIRECTORY "${PYTHON_COMPILED_MODULE_DIR}")
 
-# Use `make python-package` to create the python package in the build directory
-# The python package will be created at PYTHON_PACKAGE_DIR. It contains:
-# 1) Pure-python code and misc files, copied from src/python/package
-# 2) The compiled python-C++ module, i.e. cupoch.so (or the equivalents)
-# 3) Configured files and supporting files
-# Note: `make python-package` clears PYTHON_COMPILED_MODULE_DIR first every time
-set(PYTHON_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/lib/python_package")
-message(STATUS "PYPI_PACKAGE_NAME: ${PYPI_PACKAGE_NAME}")
+# Install the compiled module + pure-python package into the wheel.
+# scikit-build-core consumes only the "python" component (see pyproject.toml),
+# so the static-lib/header install() rules in src/cupoch are excluded.
+install(TARGETS ${PACKAGE_NAME}
+        LIBRARY DESTINATION cupoch COMPONENT python
+        RUNTIME DESTINATION cupoch COMPONENT python)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cupoch/__init__.py
+        DESTINATION cupoch COMPONENT python)
 
-add_custom_target(python-package
-    COMMAND ${CMAKE_COMMAND}
-            -DPYTHON_PACKAGE_SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-            -DPYTHON_PACKAGE_DST_DIR=${PYTHON_PACKAGE_DST_DIR}
-            -DPYTHON_VERSION=${PYTHON_VERSION}
-            -DPYTHON_COMPILED_MODULE_PATH=$<TARGET_FILE:${PACKAGE_NAME}>
-            -DENABLE_JUPYTER=${ENABLE_JUPYTER}
-            -DPROJECT_EMAIL=${PROJECT_EMAIL}
-            -DPROJECT_HOME=${PROJECT_HOME}
-            -DPROJECT_DOCS=${PROJECT_DOCS}
-            -DPROJECT_CODE=${PROJECT_CODE}
-            -DPROJECT_ISSUES=${PROJECT_ISSUES}
-            -DPROJECT_VERSION=${PROJECT_VERSION}
-            -DPROJECT_VERSION_THREE_NUMBER=${PROJECT_VERSION_THREE_NUMBER}
-            -DPYPI_PACKAGE_NAME=${PYPI_PACKAGE_NAME}
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/make_python_package.cmake
-)
-
-add_custom_target(generate-stubs
-    COMMAND ${CMAKE_COMMAND}
-            -E env PYTHONPATH=$ENV{PYTHONPATH}:${PYTHON_PACKAGE_DST_DIR}
-            pybind11-stubgen cupoch --no-setup-py --root-module-suffix="" --ignore-invalid=all --output-dir="${PYTHON_PACKAGE_DST_DIR}/cupoch-stubs"
-)
-
-add_custom_target(pip-package
-    COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel --dist-dir pip_package
-    COMMAND echo "pip wheel created at ${PYTHON_PACKAGE_DST_DIR}/pip_package"
-    WORKING_DIRECTORY ${PYTHON_PACKAGE_DST_DIR}
-    DEPENDS python-package
-)
-
-# Use `make install-pip-package` to install pip wheel package to the current
-# python environment.
-add_custom_target(install-pip-package
-    COMMAND ${CMAKE_COMMAND}
-            -DPYTHON_PACKAGE_DST_DIR=${PYTHON_PACKAGE_DST_DIR}
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/make_install_pip_package.cmake
-    DEPENDS pip-package generate-stubs
-)
+# Generate .pyi stubs from the freshly built module. Best-effort: a stubgen
+# failure warns but does not fail the wheel build (or pass -DBUILD_STUBS=OFF).
+option(BUILD_STUBS "Generate pybind11 .pyi stubs into the wheel" ON)
+if (BUILD_STUBS)
+    set(STUBS_DIR "${CMAKE_CURRENT_BINARY_DIR}/stubs")
+    add_custom_command(TARGET ${PACKAGE_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+                -DMODULE_DIR=${PYTHON_COMPILED_MODULE_DIR}
+                -DOUT_DIR=${STUBS_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/run_stubgen.cmake
+        COMMENT "Generating cupoch .pyi stubs"
+        VERBATIM)
+    install(DIRECTORY ${STUBS_DIR}/cupoch/
+            DESTINATION cupoch COMPONENT python
+            FILES_MATCHING PATTERN "*.pyi")
+endif ()

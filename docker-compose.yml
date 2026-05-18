@@ -3,7 +3,9 @@ version: '3'
 services:
   cupoch:
     image: cupoch:latest
-    build: .
+    build:
+      context: .
+      target: builder
     container_name: cupoch
     environment:
       - "DISPLAY=${DISPLAY}"

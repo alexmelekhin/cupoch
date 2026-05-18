@@ -1,4 +1,5 @@
-from .cupoch import * # py2 py3 compatible
-initialize_allocator()
+from .cupoch import *  # noqa: F401,F403
+from importlib.metadata import version as _version
 
-__version__ = '@PROJECT_VERSION@'
+initialize_allocator()
+__version__ = _version("cupoch")

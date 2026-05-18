@@ -67,14 +67,28 @@ You can install cupoch using pip.
 pip install cupoch
 ```
 
-Or install cupoch from source.
+Or build and install cupoch from source. Packaging uses
+[scikit-build-core](https://scikit-build-core.readthedocs.io) (PEP 517) driven by
+[uv](https://docs.astral.sh/uv/), so a single command builds the wheel.
 
 ```
 git clone https://github.com/neka-nat/cupoch.git --recurse
 cd cupoch
-mkdir build
-cd build
-cmake ..; make install-pip-package -j
+uv build --wheel              # -> dist/cupoch-*.whl
+uv pip install dist/*.whl
+```
+
+Pass CMake options (e.g. your GPU's compute capability) at build time via
+`SKBUILD_CMAKE_DEFINE`:
+
+```
+SKBUILD_CMAKE_DEFINE="CMAKE_CUDA_ARCHITECTURES=86" uv build --wheel
+```
+
+For an editable / development install:
+
+```
+uv pip install -e . --no-build-isolation
 ```
 
 ### Installation for Jetson Nano
@@ -97,14 +111,26 @@ make && sudo make install
 cd ..
 git clone -b jetson_nano https://github.com/neka-nat/cupoch.git --recurse
 cd cupoch/
-mkdir build
-cd build/
 export PATH=/usr/local/cuda/bin:$PATH
-cmake -DBUILD_GLEW=ON -DBUILD_GLFW=ON -DBUILD_PNG=ON -DBUILD_JSONCPP=ON ..
-sudo make install-pip-package
+pip install uv
+SKBUILD_CMAKE_DEFINE="BUILD_GLEW=ON;BUILD_GLFW=ON;BUILD_PNG=ON;BUILD_JSONCPP=ON" uv build --wheel
+uv pip install dist/*.whl
 ```
 
 ### Use Docker
+
+Build the wheel inside Docker (CUDA 12.8 / Ubuntu 24.04 / Python 3.12 by
+default) and export it to the host `./dist` directory — no local CUDA toolchain
+needed:
+
+```sh
+docker build --output type=local,dest=./dist .
+# choose CUDA / Python versions:
+docker build --build-arg CUDA_VERSION=12.8.0 --build-arg PYTHON_VERSION=3.11 \
+             --output type=local,dest=./dist .
+```
+
+For an interactive GPU dev container (compose builds the `builder` stage):
 
 ```sh
 docker compose up -d

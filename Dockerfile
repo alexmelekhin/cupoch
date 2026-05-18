@@ -1,40 +1,42 @@
+# syntax=docker/dockerfile:1
 
-FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
+# CUDA image version tag (nvidia/cuda:<CUDA_VERSION>-devel-ubuntu24.04).
+ARG CUDA_VERSION=12.8.0
+# Python version uv builds the wheel for (3.10 / 3.11 / 3.12 / 3.13).
+ARG PYTHON_VERSION=3.12
+
+FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu24.04 AS builder
+
+ARG PYTHON_VERSION=3.12
 
 WORKDIR /work/cupoch
 
-ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && apt-get install -y tzdata
-ENV TZ Asia/Tokyo
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Tokyo
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-         curl \
-         wget \
-         build-essential \
-         libxinerama-dev \
-         libxcursor-dev \
-         libglu1-mesa-dev \
-         xorg-dev \
-         cmake \
-         python3-dev \
-         python3-setuptools && \
-     rm -rf /var/lib/apt/lists/*
+        build-essential \
+        ca-certificates \
+        cmake \
+        libxinerama-dev \
+        libxcursor-dev \
+        libglu1-mesa-dev \
+        xorg-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
-ENV PATH $PATH:/root/.local/bin
+# uv: build frontend + Python toolchain manager (provides the requested
+# CPython, so no system python-dev is needed).
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY . .
 
-RUN cd src/python \
-    && poetry config virtualenvs.create false \
-    && poetry run pip install -U pip \
-    && poetry install
+# scikit-build-core passes these through to CMake (see pyproject.toml).
+ENV SKBUILD_CMAKE_DEFINE="BUILD_GLEW=ON;BUILD_GLFW=ON;BUILD_PNG=ON;BUILD_JSONCPP=ON"
 
-ENV PYTHONPATH $PYTHONPATH:/usr/lib/python3.8/site-packages
+RUN uv python install ${PYTHON_VERSION} && \
+    uv build --wheel --python ${PYTHON_VERSION}
 
-RUN mkdir build \
-    && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_GLEW=ON -DBUILD_GLFW=ON -DBUILD_PNG=ON -DBUILD_JSONCPP=ON \
-    && make pip-package \
-    && pip install lib/python_package/pip_package/*.whl
+# Minimal final stage holding only the built wheel, so it can be exported with:
+#   docker build --output type=local,dest=./dist .
+FROM scratch AS export
+COPY --from=builder /work/cupoch/dist/ /

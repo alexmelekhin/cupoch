@@ -6,4 +6,3 @@ site
 **/__pycache__
 src/cupoch/visualization/shader/shader.h
 **/imgui.ini
-src/python/poetry.lock

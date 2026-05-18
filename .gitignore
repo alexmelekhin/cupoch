@@ -1,4 +1,5 @@
 build*
+dist/
 install*
 *.nvp
 cupoch_config.h

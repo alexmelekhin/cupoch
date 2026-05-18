@@ -1,0 +1,101 @@
+[build-system]
+requires = ["scikit-build-core>=0.10"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "cupoch"
+dynamic = ["version"]
+description = "Cupoch: Robotics with GPU computing"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "neka-nat", email = "nekanat.stock@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.26"]
+keywords = ["robotics", "point-cloud", "mesh", "RGB-D", "collision", "visualization"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: X11 Applications",
+    "Framework :: Robot Framework",
+    "Framework :: Robot Framework :: Library",
+    "Framework :: Robot Framework :: Tool",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Other Audience",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+    "Topic :: Multimedia :: Graphics :: 3D Rendering",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/neka-nat/cupoch"
+"Source code" = "https://github.com/neka-nat/cupoch"
+Issues = "https://github.com/neka-nat/cupoch/issues"
+
+[project.optional-dependencies]
+# Carried over from the former poetry extras; pins loosened to >=.
+examples = [
+    "open3d", "torch", "opencv-python", "networkx", "rospkg", "matplotlib",
+    "pyrealsense2", "depthai", "rospy-all", "rosmaster", "rosbag", "transformations",
+]
+
+[dependency-groups]
+dev = ["pybind11-stubgen", "black", "mkdocs", "mkdocs-material", "twine"]
+
+[[tool.uv.index]]
+name = "ros"
+url = "https://rospypi.github.io/simple/"
+explicit = true
+
+[tool.uv.sources]
+rospkg = { index = "ros" }
+"rospy-all" = { index = "ros" }
+rosmaster = { index = "ros" }
+rosbag = { index = "ros" }
+
+[tool.scikit-build]
+minimum-version = "0.10"
+cmake.source-dir = "."
+cmake.version = ">=3.18"
+build-dir = "build/{wheel_tag}"
+# Only build the pybind module (pulls in the cupoch_* libs it links);
+# skips examples/unittests for a much faster wheel build.
+build.targets = ["cupoch"]
+# The wheel is populated solely by CMake install() rules tagged COMPONENT
+# "python"; this excludes the static-lib/header install()s in
+# src/cupoch/CMakeLists.txt.
+wheel.packages = []
+install.components = ["python"]
+
+[tool.scikit-build.cmake.define]
+BUILD_UNIT_TESTS = "OFF"
+CMAKE_BUILD_TYPE = "Release"
+# CMAKE_CUDA_ARCHITECTURES / USE_RMM / BUILD_GLEW... are overridable at build
+# time via SKBUILD_CMAKE_DEFINE or --config-settings=cmake.define.X=Y.
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "src/cupoch/version.txt"
+regex = '''(?sx)
+CUPOCH_VERSION_MAJOR \s+ (?P<major>\d+) .*?
+CUPOCH_VERSION_MINOR \s+ (?P<minor>\d+) .*?
+CUPOCH_VERSION_PATCH \s+ (?P<patch>\d+) .*?
+CUPOCH_VERSION_TWEAK \s+ (?P<tweak>\d+)
+'''
+result = "{major}.{minor}.{patch}.{tweak}"
